@@ -1,0 +1,175 @@
+#!/usr/bin/env ruby
+#
+# prepare git to release to production, supporting two release branches
+#
+require 'thor'
+
+class Release < Thor
+  BRANCHES=%w{code code-dev beta beta-dev}
+  desc "init", "create dual release branches, code and beta"
+  def init
+      BRANCHES.each { |branch| make_tracking_branch(branch) }
+  end
+
+  desc "minor", "prepare git to ship code-dev to code and beta-dev to beta"
+  method_options :skip_tag => :boolean, :aliases => "-s"
+  def minor
+    update_branches
+    @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
+      git woe minor.
+      It will resume where it left off.
+    }
+    merge("code-dev","beta-dev")
+    if start("minor")
+      tag_branch("code-dev","code",false)
+      tag_branch("beta-dev","beta",false)
+    end
+    merge("beta-dev","beta")
+    merge("code-dev","code")
+    push_branches
+    finish("minor")
+    puts "done."
+  end
+
+  desc "major", "both beta and code will be the same at the end of a major release cycle"
+  method_options :skip_tag => :boolean, :aliases => "-s"
+  def major
+    update_branches
+    @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
+      git woe major.
+      It will resume where it left off.
+    }
+    merge("code-dev","beta-dev")
+    merge("beta-dev","code-dev")
+    if start("major")
+      tag_branch("code-dev","code",true)
+      tag_branch("beta-dev","beta",true)
+    end
+    merge("beta-dev","beta")
+    merge("code-dev","code")
+    push_branches
+    finish("major")
+    puts "done."
+  end
+
+  desc "start_hotfix", "create a hotfix branch. type close_hotfix"
+  method_options :skip_tag => :boolean, :aliases => "-s"
+  def start_hotfix
+    delete("hotfix")
+    checkout("code")
+    run("git checkout -b hotfix")
+    puts "type 'release finish_hotfix' after committing your changes"
+  end
+
+  desc "finish_hotfix", "finish_hotfix to merge the changes back"
+  method_options :skip_tag => :boolean, :aliases => "-s"
+  def finish_hotfix
+    hotfix = next_tag("hotfix",false)
+    if start("hotfix")
+      tag_branch("hotfix","hotfix", hotfix)
+    end
+    merge("hotfix","code")
+    merge("hotfix","beta")
+    delete("hotfix")
+    finish("hotfix")
+  end
+
+
+  # internal methods - cant call from the outside
+  no_commands do
+
+    def run(command)
+      puts command
+      unless system(command)
+        puts "FAILED! #{$?.exitstatus}"
+        puts @resume_message if @resume_message
+        exit($?.exitstatus)
+      end
+    end
+
+    def make_tracking_branch(branch)
+      unless `git branch`.split.include?(branch)
+        run("git checkout -t origin/#{branch}")
+      end
+    end
+
+    def has_tag(tagname) 
+      !`git tag -l '#{tagname}'`.split.empty?
+    end
+
+    def start(process)
+      if has_tag(process)
+        false
+      else
+        run("git tag #{process}") # lightweight tag
+        true
+      end
+    end
+    def finish(process)
+      run("git tag -d #{process}")
+    end
+   
+    def update_branches
+      BRANCHES.each {|branch| update_branch(branch)}
+    end
+
+    def update_branch(branch)
+      puts "updating branch: #{branch}..."
+      run("git checkout #{branch}")
+      run("git pull origin #{branch}")
+      run("git fetch --tags")
+    end
+
+    def push_branches
+      run("git push --tags")
+      BRANCHES.each {|branch| push_branch(branch)}
+    end
+
+    def push_branch(branch)
+      checkout(branch)
+      run("git push")
+    end
+
+    def checkout(branch)
+      run("git checkout #{branch}")
+    end
+
+    def delete(branch)
+      run("git branch -D #{branch}") if exists?(branch)
+    end
+
+    def exists?(branch)
+      `git branch`.split.include?(branch)
+    end
+
+    def tag_branch(source,target,major_release)
+      next_tag = next_tag(target,major_release)
+      if major_release
+        message="major release #{next_tag}: merge from #{source} => #{target}"
+      else
+        message="minor release #{next_tag}: merge from #{source} => #{target}"
+      end
+      run("git tag -a #{next_tag} -m '#{message}'")
+    end
+
+    def merge(source, target)
+      checkout(target)
+      run("git merge #{source}")
+    end
+    
+    def next_tag(branch,major_release)
+      tag = `git tag -l '#{branch}-*'`.split.sort.last || "#{branch}-1.0"
+      branch_name=major=minor=""
+      (ignore, branch_name, major, minor) = /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a
+      if(major_release)
+        "#{branch_name}-#{major.to_i+1}.0"
+      else
+        "#{branch_name}-#{major}.#{minor.to_i+1}"
+      end
+    end
+  end
+end
+
+Release.start(ARGV)
+
+
