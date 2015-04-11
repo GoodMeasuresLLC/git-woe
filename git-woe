@@ -26,8 +26,8 @@ class Release < Thor
     end
     merge("beta-dev","beta")
     merge("code-dev","code")
-    push_branches
     finish("minor")
+    push_branches
     puts "done."
   end
 
@@ -47,8 +47,8 @@ class Release < Thor
     end
     merge("beta-dev","beta")
     merge("code-dev","code")
-    push_branches
     finish("major")
+    push_branches
     puts "done."
   end
 
@@ -72,6 +72,7 @@ class Release < Thor
     merge("hotfix","beta")
     delete("hotfix")
     finish("hotfix")
+    push_branches
   end
 
 
