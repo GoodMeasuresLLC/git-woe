@@ -52,9 +52,10 @@ class Release < Thor
     puts "done."
   end
 
-  desc "start_hotfix", "create a hotfix branch. type close_hotfix"
+  desc "start_hotfix", "create a hotfix branch"
   method_options :skip_tag => :boolean, :aliases => "-s"
   def start_hotfix
+    update_branches
     delete("hotfix")
     checkout("code")
     run("git checkout -b hotfix")
