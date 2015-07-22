@@ -112,6 +112,7 @@ class Release < Thor
     end
    
     def update_branches
+      run("git fetch --tags")
       BRANCHES.each {|branch| update_branch(branch)}
     end
 
@@ -119,7 +120,6 @@ class Release < Thor
       puts "updating branch: #{branch}..."
       run("git checkout #{branch}")
       run("git pull origin #{branch}")
-      run("git fetch --tags")
     end
 
     def push_branches
