@@ -71,6 +71,8 @@ class Release < Thor
     end
     merge("hotfix","code")
     merge("hotfix","beta")
+    merge("hotfix","code-dev")
+    merge("hotfix","beta-dev")
     delete("hotfix")
     finish("hotfix")
     push_branches
@@ -156,7 +158,7 @@ class Release < Thor
 
     def merge(source, target)
       checkout(target)
-      run("git merge #{source}")
+      run(%Q{git merge -m "merge from #{source} to #{target}" #{source}})
     end
     
     def next_tag(branch,major_release)
