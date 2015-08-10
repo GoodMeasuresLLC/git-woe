@@ -76,6 +76,7 @@ class Release < Thor
     delete("hotfix")
     finish("hotfix")
     push_branches
+    checkout("beta")
   end
 
 
@@ -162,9 +163,10 @@ class Release < Thor
     end
     
     def next_tag(branch,major_release)
-      tag = `git tag -l '#{branch}-*'`.split.sort.last || "#{branch}-1.0"
+      tags = `git tag -l '#{branch}-*'`.split || ["#{branch}-1.0"]
+      tag = tags.map {|tag| /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a}.sort_by {|val| "#{val[2]}.val[3]".to_f}.last
       branch_name=major=minor=""
-      (ignore, branch_name, major, minor) = /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a
+      (ignore, branch_name, major, minor) = tag
       if(major_release)
         "#{branch_name}-#{major.to_i+1}.0"
       else
@@ -175,5 +177,4 @@ class Release < Thor
 end
 
 Release.start(ARGV)
-
 
