@@ -5,14 +5,13 @@
 require 'thor'
 
 class Release < Thor
-  BRANCHES=%w{code code-dev beta beta-dev}
+  BRANCHES=%w{code code-rc code-dev beta beta-rc beta-dev}
   desc "init", "create dual release branches, code and beta"
   def init
       BRANCHES.each { |branch| make_tracking_branch(branch) }
   end
 
-  desc "minor", "prepare git to ship code-dev to code and beta-dev to beta"
-  method_options :skip_tag => :boolean, :aliases => "-s"
+  desc "minor", "prepare git to ship code-dev to code-rc and beta-dev to beta-rc"
   def minor
     update_branches
     @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
@@ -20,19 +19,13 @@ class Release < Thor
       It will resume where it left off.
     }
     merge("code-dev","beta-dev")
-    if start("minor")
-      tag_branch("code-dev","code",false)
-      tag_branch("beta-dev","beta",false)
-    end
-    merge("beta-dev","beta")
-    merge("code-dev","code")
-    finish("minor")
+    merge("beta-dev","beta-rc")
+    merge("code-dev","code-rc")
     push_branches
     puts "done."
   end
 
-  desc "major", "both beta and code will be the same at the end of a major release cycle"
-  method_options :skip_tag => :boolean, :aliases => "-s"
+  desc "major", "both beta-rc and code-rc will be the same at the end of a major release cycle"
   def major
     update_branches
     @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
@@ -41,13 +34,29 @@ class Release < Thor
     }
     merge("code-dev","beta-dev")
     merge("beta-dev","code-dev")
-    if start("major")
-      tag_branch("code-dev","code",true)
-      tag_branch("beta-dev","beta",true)
+    merge("beta-dev","beta-rc")
+    merge("code-dev","code-rc")
+    push_branches
+    puts "done."
+  end
+
+  desc "ship", "merges -rc branches into code, beta and tags them"
+  method_options :skip_tag => :boolean, :aliases => "-s"
+  def ship
+    update_branches
+    @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
+      git woe ship.
+      It will resume where it left off.
+    }
+    merge("code-rc","code-dev")
+    merge("beta-rc","beta-dev")
+    if start("minor")
+      tag_branch("code-rc","code",false)
+      tag_branch("beta-rc","beta",false)
     end
-    merge("beta-dev","beta")
-    merge("code-dev","code")
-    finish("major")
+    merge("beta-rc","beta")
+    merge("code-rc","code")
+    finish("minor")
     push_branches
     puts "done."
   end
