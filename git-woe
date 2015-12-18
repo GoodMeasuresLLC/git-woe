@@ -49,7 +49,8 @@ class Release < Thor
       It will resume where it left off.
     }
     merge("code-rc","code-dev")
-    merge("code-rc","beta-dev")
+    merge("code-rc","beta-rc")
+    merge("code-rc","beta")
     merge("beta-rc","beta-dev")
     if start("minor")
       tag_branch("code-rc","code",false)
