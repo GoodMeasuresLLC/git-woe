@@ -13,6 +13,7 @@ class Release < Thor
 
   desc "minor", "prepare git to ship code-dev to code-rc and beta-dev to beta-rc"
   def minor
+    start("minor-release")
     update_branches
     @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
       git woe minor.
@@ -27,6 +28,7 @@ class Release < Thor
 
   desc "major", "both beta-rc and code-rc will be the same at the end of a major release cycle"
   def major
+    start("major-release")
     update_branches
     @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
       git woe major.
@@ -52,13 +54,13 @@ class Release < Thor
     merge("code-rc","beta-rc")
     merge("code-rc","beta")
     merge("beta-rc","beta-dev")
-    if start("minor")
-      tag_branch("code-rc","code",false)
-      tag_branch("beta-rc","beta",false)
-    end
     merge("beta-rc","beta")
     merge("code-rc","code")
-    finish("minor")
+    major_release = has_tag("major-release")
+    tag_branch("code-rc","code",major_release)
+    tag_branch("beta-rc","beta",major_release)
+    # do both just to clean up in case of previous failure
+    %w(minor-release major-release).each {|name|finish(name)} 
     push_branches
     puts "done."
   end
@@ -122,7 +124,7 @@ class Release < Thor
       end
     end
     def finish(process)
-      run("git tag -d #{process}")
+      run("git tag -d #{process}") if has_tag(process)
     end
    
     def update_branches
