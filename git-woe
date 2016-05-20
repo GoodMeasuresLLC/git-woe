@@ -177,7 +177,7 @@ class Release < Thor
     
     def next_tag(branch,major_release)
       tags = `git tag -l '#{branch}-*'`.split || ["#{branch}-1.0"]
-      tag = tags.map {|tag| /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a}.sort_by {|val| "#{val[2]}.val[3]".to_f}.last
+      tag = tags.map {|tag| /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a}.sort_by {|val| "#{val[2]}.#{val[3]}".to_f}.last
       branch_name=major=minor=""
       (ignore, branch_name, major, minor) = tag
       if(major_release)
