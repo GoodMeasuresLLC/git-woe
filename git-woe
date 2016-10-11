@@ -3,6 +3,9 @@
 # prepare git to release to production, supporting two release branches
 #
 require 'thor'
+require 'slack-notifier'
+# notify to deploy channel
+SLACK_WEBHOOK="https://hooks.slack.com/services/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"
 
 class Release < Thor
   BRANCHES=%w{code code-rc code-dev beta beta-rc beta-dev}
@@ -57,8 +60,9 @@ class Release < Thor
     merge("beta-rc","beta")
     merge("code-rc","code")
     major_release = has_tag("major-release")
-    tag_branch("code-rc","code",major_release)
-    tag_branch("beta-rc","beta",major_release)
+    code_tag = tag_branch("code-rc","code",major_release)
+    beta_tag = tag_branch("beta-rc","beta",major_release)
+    slack("#{major_release ? 'major release' : 'minor release'} complete. CODE_TAG: #{code_tag} BETA_TAG: #{beta_tag}")
     # do both just to clean up in case of previous failure
     %w(minor-release major-release).each {|name|finish(name)} 
     push_branches
@@ -72,15 +76,16 @@ class Release < Thor
     delete("hotfix")
     checkout("code")
     run("git checkout -b hotfix")
-    puts "type 'release finish_hotfix' after committing your changes"
+    puts "type 'git woe finish_hotfix' after committing your changes"
   end
 
   desc "finish_hotfix", "finish_hotfix to merge the changes back"
   method_options :skip_tag => :boolean, :aliases => "-s"
   def finish_hotfix
     hotfix = next_tag("hotfix",false)
+    tag=nil
     if start("hotfix")
-      tag_branch("hotfix","hotfix", hotfix)
+      tag=tag_branch("hotfix","hotfix", hotfix)
     end
     merge("hotfix","code")
     merge("hotfix","beta")
@@ -90,6 +95,7 @@ class Release < Thor
     finish("hotfix")
     push_branches
     checkout("beta")
+    slack("hotfix complete. #{tag}")
   end
 
 
@@ -168,6 +174,7 @@ class Release < Thor
         message="minor release #{next_tag}: merge from #{source} => #{target}"
       end
       run("git tag -a #{next_tag} -m '#{message}'")
+      next_tag
     end
 
     def merge(source, target)
@@ -184,6 +191,16 @@ class Release < Thor
         "#{branch_name}-#{major.to_i+1}.0"
       else
         "#{branch_name}-#{major}.#{minor.to_i+1}"
+      end
+    end
+
+    def slack(message)
+      @notifier ||= Slack::Notifier.new SLACK_WEBHOOK
+      ping_options = {:channel => "#deploy", :username => "Git-woe", :icon_emoji => ':boat:'}
+      begin
+        @notifier.ping message, ping_options
+      rescue => error
+        puts error.message
       end
     end
   end
