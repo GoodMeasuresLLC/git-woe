@@ -62,10 +62,10 @@ class Release < Thor
     major_release = has_tag("major-release")
     code_tag = tag_branch("code-rc","code",major_release)
     beta_tag = tag_branch("beta-rc","beta",major_release)
-    slack("#{major_release ? 'major release' : 'minor release'} complete. CODE_TAG: #{code_tag} BETA_TAG: #{beta_tag}")
     # do both just to clean up in case of previous failure
     %w(minor-release major-release).each {|name|finish(name)} 
     push_branches
+    slack("#{major_release ? 'major release' : 'minor release'} complete. CODE_TAG: #{code_tag} BETA_TAG: #{beta_tag}")
     puts "done."
   end
 
