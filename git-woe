@@ -98,6 +98,14 @@ class Release < Thor
     slack("hotfix complete. #{tag}")
   end
 
+  # desc 'test', 'run some test code'
+  # def test
+  #   tag = '0.1'
+  #   puts "has_remote_tag('#{tag}')=#{has_remote_tag(tag)}"
+  #   puts "delete_remote_tag('#{tag}')=#{delete_remote_tag(tag)}"
+  #   puts "has_remote_tag('#{tag}')=#{has_remote_tag(tag)}"
+  # end
+
 
   # internal methods - cant call from the outside
   no_commands do
@@ -121,6 +129,18 @@ class Release < Thor
       !`git tag -l '#{tagname}'`.split.empty?
     end
 
+    def delete_tag(tagname)
+      `git tag -D '#{tagname}'`
+    end
+
+    def has_remote_tag(tagname) 
+      !`git ls-remote -q --tags | grep refs/tags/'#{tagname}'`.split.empty?
+    end
+
+    def delete_remote_tag(tagname)
+      run("git push origin :refs/tags/#{tagname}")
+    end
+
     def start(process)
       if has_tag(process)
         false
@@ -130,7 +150,8 @@ class Release < Thor
       end
     end
     def finish(process)
-      run("git tag -d #{process}") if has_tag(process)
+      delete_tag(process) if has_tag(process)
+      delete_remote_tag(process) if has_remote_tag(process)
     end
    
     def update_branches
@@ -161,6 +182,7 @@ class Release < Thor
     def delete(branch)
       run("git branch -D #{branch}") if exists?(branch)
     end
+
 
     def exists?(branch)
       `git branch`.split.include?(branch)
