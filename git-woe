@@ -55,9 +55,8 @@ class Release < Thor
     }
     merge("code-rc","code-dev")
     merge("code-rc","beta-rc")
-    merge("code-rc","beta")
-    merge("beta-rc","beta-dev")
     merge("beta-rc","beta")
+    merge("beta-rc","beta-dev")
     merge("code-rc","code")
     major_release = has_tag("major-release")
     code_tag = tag_branch("code-rc","code",major_release)
