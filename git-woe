@@ -129,7 +129,7 @@ class Release < Thor
     end
 
     def delete_tag(tagname)
-      `git tag -D '#{tagname}'`
+      `git tag --delete '#{tagname}'`
     end
 
     def has_remote_tag(tagname) 
