@@ -200,7 +200,7 @@ class Release < Thor
 
     def merge(source, target)
       checkout(target)
-      run(%Q{git merge -m "merge from #{source} to #{target}" #{source}})
+      run(%Q{git merge -m "merge from #{source} to #{target}" refs/heads/#{source}})
     end
     
     def next_tag(branch,major_release)
