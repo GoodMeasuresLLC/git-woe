@@ -64,7 +64,7 @@ class Release < Thor
     beta_tag = tag_branch("beta-rc","beta",major_release)
     slack("#{major_release ? 'major release' : 'minor release'} complete. CODE_TAG: #{code_tag} BETA_TAG: #{beta_tag}")
     # do both just to clean up in case of previous failure
-    %w(minor-release major-release).each {|name|finish(name)} 
+    %w(minor-release major-release).each {|name|finish(name)}
     push_branches
     puts "done."
   end
@@ -98,6 +98,28 @@ class Release < Thor
     slack("hotfix complete. #{tag}")
   end
 
+  desc "frankenbranch branches...", "create a frankenbranch from the given branches"
+  method_option :resume, :type => :boolean, :default => false, :desc=>"resume frankenbranch after a merge conflict"
+  def frankenbranch(base_branch, *branches)
+    if(branches.empty?)
+      puts %Q{You must provide one or more branches!
+        For example, git woe frankenbranch feature-branch-a feature-branch-b ...
+      }
+      exit(-1)
+    end
+    @resume_message=%Q{If you get a merge conflict, finish the merge and then rerun
+      git woe frankenbranch -resume.
+      It will resume where it left off. Otherwise, it
+      starts from scratch ..
+    }
+    update_branch(base_branch)
+    branches.each {|branch| update_branch(branch)}
+    target_branch = create_frankenbranch(base_branch, options.resume)
+    branches.each {|branch| merge(branch, target_branch)}
+    push_branch(target_branch)
+    slack("frankenbranch #{target_branch} complete")
+  end
+
 
   # internal methods - cant call from the outside
   no_commands do
@@ -117,7 +139,14 @@ class Release < Thor
       end
     end
 
-    def has_tag(tagname) 
+    def make_new_branch(new_branch, base_branch)
+      unless `git branch`.split.include?(new_branch)
+        run("git checkout #{base_branch}")
+        run("git checkout -b #{new_branch}")
+      end
+    end
+
+    def has_tag(tagname)
       !`git tag -l '#{tagname}'`.split.empty?
     end
 
@@ -132,7 +161,7 @@ class Release < Thor
     def finish(process)
       run("git tag -d #{process}") if has_tag(process)
     end
-   
+
     def update_branches
       run("git fetch --tags")
       BRANCHES.each {|branch| update_branch(branch)}
@@ -151,7 +180,7 @@ class Release < Thor
 
     def push_branch(branch)
       checkout(branch)
-      run("git push")
+      run("git push --set-upstream origin #{branch}")
     end
 
     def checkout(branch)
@@ -181,7 +210,7 @@ class Release < Thor
       checkout(target)
       run(%Q{git merge -m "merge from #{source} to #{target}" #{source}})
     end
-    
+
     def next_tag(branch,major_release)
       tags = `git tag -l '#{branch}-*'`.split || ["#{branch}-1.0"]
       tag = tags.map {|tag| /\A(#{branch})-(\d+)\.(\d+)\z/.match(tag).to_a}.sort_by {|val| "#{val[2]}.#{val[3]}".to_f}.last
@@ -192,6 +221,13 @@ class Release < Thor
       else
         "#{branch_name}-#{major}.#{minor.to_i+1}"
       end
+    end
+
+    def create_frankenbranch(base_branch, resume)
+      target_branch = Time.now.strftime("frankenbranch-%F")
+      delete(target_branch) unless resume
+      make_new_branch(target_branch, base_branch)
+      target_branch
     end
 
     def slack(message)
