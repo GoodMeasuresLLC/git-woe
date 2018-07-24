@@ -87,10 +87,10 @@ class Release < Thor
     if start("hotfix")
       tag=tag_branch("hotfix","hotfix", hotfix)
     end
-    merge("hotfix","code")
-    merge("hotfix","beta")
-    merge("hotfix","code-dev")
-    merge("hotfix","beta-dev")
+    merge("refs/heads/hotfix","code")
+    merge("refs/heads/hotfix","beta")
+    merge("refs/heads/hotfix","code-dev")
+    merge("refs/heads/hotfix","beta-dev")
     delete("hotfix")
     finish("hotfix")
     push_branches
