@@ -188,7 +188,10 @@ class Release < Thor
     end
 
     def delete(branch)
-      run("git branch -D #{branch}") if exists?(branch)
+      if exists?(branch)
+        run("git branch -D #{branch}")
+        run("git push origin :#{branch}")
+      end
     end
 
     def exists?(branch)
