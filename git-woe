@@ -195,11 +195,11 @@ class Release < Thor
     end
 
     def branch_exists?(branch)
-      `git branch --list #{branch}`.present?
+      `git branch --list #{branch}` != ''
     end
 
     def remote_branch_exists?(branch)
-       `git branch -r --list origin/#{branch}`.present?
+       `git branch -r --list origin/#{branch}` != ''
     end
 
     def tag_branch(source,target,major_release)
