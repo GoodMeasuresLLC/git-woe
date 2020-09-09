@@ -188,14 +188,18 @@ class Release < Thor
     end
 
     def delete(branch)
-      if exists?(branch)
+      if branch_exists?(branch)
         run("git branch -D #{branch}")
-        run("git push origin :#{branch}")
+        run("git push origin :#{branch}") if remote_branch_exists?(branch)
       end
     end
 
-    def exists?(branch)
-      `git branch`.split.include?(branch)
+    def branch_exists?(branch)
+      `git branch --list #{branch}`.present?
+    end
+
+    def remote_branch_exists?(branch)
+       `git branch -r --list origin/#{branch}`.present?
     end
 
     def tag_branch(source,target,major_release)
